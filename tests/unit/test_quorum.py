@@ -107,9 +107,17 @@ def test_update_acls_correctly_handles_relation_chroots(harness):
 
         for _, kwargs in patched_manager["create_znode_leader"].call_args_list:
             assert "/rohan" in kwargs["path"]
+            acls = kwargs["acls"]
+            assert len(acls) == 2
+            assert len([acl for acl in acls if acl.perms == 31 and acl.id.scheme == "sasl"]) != 0
+            assert len([acl for acl in acls if acl.perms == 31 and acl.id.scheme == "digest"]) != 0
 
         for _, kwargs in patched_manager["set_acls_znode_leader"].call_args_list:
             assert "/rohan" in kwargs["path"]
+            acls = kwargs["acls"]
+            assert len(acls) == 2
+            assert len([acl for acl in acls if acl.perms == 31 and acl.id.scheme == "sasl"]) != 0
+            assert len([acl for acl in acls if acl.perms == 31 and acl.id.scheme == "digest"]) != 0
 
         removed_men = False
         for counter, call in enumerate(patched_manager["delete_znode_leader"].call_args_list):

@@ -34,6 +34,7 @@ async def test_deploy_ssl_quorum(ops_test: OpsTest):
             num_units=1,
             config={"ca-common-name": "zookeeper"},
             series=TLS_OPERATOR_SERIES,
+            revision=163,  # FIXME: Unpin once the TLS is fixed on edge channel
         ),
     )
     await ops_test.model.block_until(lambda: len(ops_test.model.applications[APP_NAME].units) == 3)
