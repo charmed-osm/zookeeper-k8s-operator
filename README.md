@@ -1,165 +1,93 @@
-# Charmed ZooKeeper K8s Operator
+# UV experiment
 
-[![CharmHub Badge](https://charmhub.io/zookeeper-k8s/badge.svg)](https://charmhub.io/zookeeper-k8s)
-[![Release](https://github.com/canonical/zookeeper-k8s-operator/actions/workflows/release.yaml/badge.svg)](https://github.com/canonical/zookeeper-k8s-operator/actions/workflows/release.yaml)
-[![Tests](https://github.com/canonical/zookeeper-k8s-operator/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/canonical/zookeeper-k8s-operator/actions/workflows/ci.yaml?query=branch%3Amain)
+Proof of concept:
 
-## Overview
+- [ ] Dependency management
+  - [x] Basic dependencies
+  - [x] Charm-lib
+  - [x] Workflow dependencies
+  - [ ] Development dependencies with groups
+  - [x] Renovate rule for charm-libs
+- [x] Task runner with tox
+- [x] Build (not yet working with strict deps)
+- [x] CI
 
-The Charmed ZooKeeper K8s Operator delivers automated operations management from day 0 to day 2 on the [Apache ZooKeeper](https://zookeeper.apache.org/) server which enables highly reliable distributed coordination, deployed on top of a [Kubernetes cluster](https://kubernetes.io/). It is an open source, end-to-end, production ready data platform on top of cloud native technologies.
+## uv integration with standard tooling and common operations
 
-The ZooKeeper K8s Operator can be found on [Charmhub](https://charmhub.io/zookeeper-k8s) and it comes with features such as:
-- Horizontal scaling for high-availability out-of-the-box
-- Server-Server and Client-Server authentication both enabled by default
-- Access control management supported with user-provided ACL lists.
-
-The ZooKeeper K8s Operator uses the latest upstream ZooKeeper binaries released by the The Apache Software Foundation that come with Kafka, made available using the [`dataplatformoci/zookeeper` OCI image](https://registry.hub.docker.com/r/dataplatformoci/zookeeper) distributed by Canonical.
-
-## Requirements
-
-For production environments, it is recommended to deploy at least 5 nodes for Zookeeper.
-While the following requirements are meant to be for production, the charm can be deployed in smaller environments.
-
-- 4-8GB of RAM
-- 2-4 cores
-- 1 storage device, 64GB
-
-## Config options
-
-To get a description of all config options available, please refer to the [`config.yaml`](https://github.com/canonical/zookeeper-k8s-operator/blob/main/config.yaml) file.
-
-Options can be changed by using the `juju config` command:
-```shell
-juju config zookeeper-k8s <config_option_1>=<value> [<config_option_2>=<value>]
-```
-## Usage
-### Basic usage
-
-The ZooKeeper operator may be deployed using the Juju command line as follows:
-
-```bash
-$ juju deploy zookeeper-k8s -n 5
-```
-
-To watch the process, `juju status` can be used. Once all the units show as `active|idle` the credentials to access the admin user can be queried with:
-```shell
-juju run-action zookeeper-k8s/leader get-super-password --wait 
-```
-
-### Replication
-#### Scaling application
-The charm can be scaled using `juju scale-application` command.
-```shell
-juju scale-application zookeeper-k8s <num_of_servers_to_scale_to>
-```
-
-This will add or remove servers to match the required number. To scale a deployment with 3 zookeeper units to 5, run:
-```shell
-juju scale-application zookeeper-k8s 5
-```
-
-### Password rotation
-#### Internal users
-The Charmed ZooKeeper K8s Operator has two internal users:
-- `super`: admin user for the cluster. Used mainly with the Kafka operator.
-- `sync`: specific to the internal quorum handling. 
-
-The `set-password` action can be used to rotate the password of one of them. If no username is passed, it will default to the `super` user.
-```shell
-# to set a specific password for the sync user
-juju run-action zookeeper-k8s/leader set-password username=sync password=<password> --wait
-
-# to randomly generate a password for the super user
-juju run-action zookeeper-k8s/leader set-password --wait
-```
-
-## Relations
-
-Supported [relations](https://juju.is/docs/olm/relations):
-
-#### `tls-certificates` interface:
-
-The `tls-certificates` interface is used with the `tls-certificates-operator` charm.
-
-To enable TLS:
+Using poetry, we would either create the venv before using poetry (using the venv module for instance), or let poetry handle its creation upon the first run.
+How to create a virtual env for the editor (used for autocomplete and diagnostics):
 
 ```shell
-# deploy the TLS charm 
-juju deploy tls-certificates-operator --channel=edge
-# add the necessary configurations for TLS
-juju config tls-certificates-operator generate-self-signed-certificates="true" ca-common-name="Test CA" 
-# to enable TLS relate the application 
-juju relate tls-certificates-operator zookeeper-k8s
+# using venv module
+python -m venv venv
+
+# using poetry, the venv could be created in-project, or in a common venv directory
+poetry install
+
+# using uv
+uv venv -p 3.10 venv
 ```
 
-Updates to private keys for certificate signing requests (CSR) can be made via the `set-tls-private-key` action.
+To use tox, make sure to install (or inject) `tox-uv`.
+
 ```shell
-# Updates can be done with auto-generated keys with
-juju run-action zookeeper-k8s/0 set-tls-private-key --wait
-juju run-action zookeeper-k8s/1 set-tls-private-key --wait
-juju run-action zookeeper-k8s/2 set-tls-private-key --wait
+uv tool install tox --with tox-uv
 ```
 
-Passing keys to internal keys should *only be done with* `base64 -w0` *not* `cat`. With three servers this schema should be followed:
+## Multi-arch lock file
+
+Should be good with the default uv.lock file https://docs.astral.sh/uv/concepts/projects/#project-lockfile.
+
+## Support for (dev) dependency groups
+
+[PEP 735](https://peps.python.org/pep-0735/) was recently accepted. Progress for supporting PEP 735 in uv is tracked [here](https://github.com/astral-sh/uv/issues/8090).
+The final syntax _should_ look like this:
+
 ```shell
-# generate shared internal key
-openssl genrsa -out internal-key.pem 3072
-# apply keys on each unit
-juju run-action zookeeper-k8s/0 set-tls-private-key "internal-key=$(base64 -w0 internal-key.pem)"  --wait
-juju run-action zookeeper-k8s/1 set-tls-private-key "internal-key=$(base64 -w0 internal-key.pem)"  --wait
-juju run-action zookeeper-k8s/2 set-tls-private-key "internal-key=$(base64 -w0 internal-key.pem)"  --wait
+# current with poetry
+
+[tool.poetry.group.fmt]
+optional = true
+
+[tool.poetry.group.fmt.dependencies]
+black = "^22.3.0"
+ruff = ">=0.1.0"
+
+[tool.poetry.group.lint]
+optional = true
+
+[tool.poetry.group.lint.dependencies]
+black = "^22.3.0"
+ruff = ">=0.1.0"
+codespell = ">=2.2.2"
+pyright = "^1.1.301"
+lightkube = "0.15.0"
 ```
 
-To disable TLS remove the relation
 ```shell
-juju remove-relation zookeeper-k8s tls-certificates-operator
+# uv with PEP 735 support
+[dependency-groups]
+fmt = [
+  "black ~= 22.3",
+  "ruff >= 0.1.0",
+]
+lint = [
+  "black ~= 22.3",
+  "ruff >= 0.1.0",
+  "codespell >= 2.2.2",
+  "pyright >= 1.1.301, <2",
+  "lightkube == 0.15.0",
+]
 ```
 
-Note: The TLS settings here are for self-signed-certificates which are not recommended for production clusters, the `tls-certificates-operator` charm offers a variety of configurations, read more on the TLS charm [here](https://charmhub.io/tls-certificates-operator)
+Note that the constraint syntax is not the same. In particular: ~ and ~= do not mean the same for [poetry](https://python-poetry.org/docs/dependency-specification/#tilde-requirements) and [uv](https://docs.astral.sh/uv/concepts/dependencies/#pep-508).
 
-## Monitoring
+## Renovate
 
-The Charmed ZooKeeper K8s Operator comes with several exporters by default. The metrics can be queried by accessing the following endpoints:
+Make sure you have a local `renovate` (minimum 38.114.0 to get the new "matchJsonata" rule).
 
-- JMX exporter: `http://<pod-ip>:9998/metrics`
-- ZooKeeper metrics: `http://<pod-ip>:7000/metrics`
-
-Additionally, the charm provides integration with the [Canonical Observability Stack](https://charmhub.io/topics/canonical-observability-stack).
-
-Deploy `cos-lite` bundle in a Kubernetes environment. This can be done by following the [deployment tutorial](https://charmhub.io/topics/canonical-observability-stack/tutorials/install-microk8s). It is needed to offer the endpoints of the COS relations. The [offers-overlay](https://github.com/canonical/cos-lite-bundle/blob/main/overlays/offers-overlay.yaml) can be used, and this step is shown on the COS tutorial.
-
-Once COS is deployed, we can find the offers from the zookeeper model:
 ```shell
-# We are on the `cos` model. Switch to `zookeeper` model
-juju switch <zookeeper_model_name>
-juju find-offers <k8s_controller_name>:
+RENOVATE_CONFIG_FILE=./renovate.json5 LOG_LEVEL=debug renovate --plaform=local --onboarding=false
 ```
 
-A similar output should appear, if `micro` is the k8s controller name and `cos` the model where `cos-lite` has been deployed:
-```
-Store  URL                   Access  Interfaces                         
-micro  admin/cos.grafana     admin   grafana_dashboard:grafana-dashboard
-micro  admin/cos.prometheus  admin   prometheus_scrape:metrics-endpoint
-. . .
-```
-
-Now, integrate zookeeper with the `metrics-endpoint`, `grafana-dashboard` and `logging` relations:
-```shell
-juju relate micro:admin/cos.prometheus zookeeper-k8s
-juju relate micro:admin/cos.grafana zookeeper-k8s
-juju relate micro:admin/cos.loki zookeeper-k8s
-```
-
-After this is complete, Grafana will show a new dashboard: `ZooKeeper Metrics`
-
-## Security
-Security issues in the Charmed ZooKeeper K8s Operator can be reported through [LaunchPad](https://wiki.ubuntu.com/DebuggingSecurity#How%20to%20File). Please do not file GitHub issues about security issues.
-
-
-## Contributing
-
-Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhancements to this charm following best practice guidelines, and [CONTRIBUTING.md](https://github.com/canonical/zookeeper-k8s-operator/blob/main/CONTRIBUTING.md) for developer guidance.
-
-
-## License
-The Charmed ZooKeeper K8s Operator is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](https://github.com/canonical/zookeeper-k8s-operator/blob/main/LICENSE) for more information.
+Then, you can assert that the charm-libs dependencies are properly matched and disabled according to our rules.

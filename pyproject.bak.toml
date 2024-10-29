@@ -1,0 +1,147 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+# Testing tools configuration
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+log_cli_level = "INFO"
+markers = ["unstable"]
+asyncio_mode = "auto"
+
+# Formatting tools configuration
+[tool.black]
+line-length = 99
+target-version = ["py310"]
+extend-exclude = "tests/integration/app-charm/lib"
+
+[tool.isort]
+profile = "black"
+
+[tool.poetry]
+name = "zookeeper-k8s-operator"
+version = "1.0"
+description = "zookeeper-k8s-operator"
+authors = []
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+ops = "^2.17.0"
+kazoo = ">=2.8.0,<2.10.0"
+tenacity = ">=8.0.1"
+pure-sasl = ">=0.6.2"
+# FIXME: Unpin once rustc 1.76 is available at build time
+rpds-py = "<0.19"
+cryptography = ">42.0.0"
+cosl = ">=0.0.5"
+pydantic = "^1.10.7"
+pyyaml = "^6.0.1"
+jsonschema = ">=4.10"
+lightkube = "^0.15.0"
+typing-extensions = "^4.9.0"
+boto3 = "^1.34.159"
+boto3-stubs = {extras = ["s3"], version = "^1.35.8"}
+httpx = "^0.27.2"
+rich = "^13.8.1"
+
+[tool.poetry.group.charm-libs.dependencies]
+# data_platform_libs/v0/data_interfaces.py
+ops = ">=2.0.0"
+# data_platform_libs/v0/upgrade.py
+# grafana_agent/v0/cos_agent.py requires pydantic <2
+poetry-core = "*"
+pydantic = "^1.10, <2"
+# tls_certificates_interface/v1/tls_certificates.py
+# tls_certificates lib uses a feature only available in cryptography >=42.0.5
+cryptography = ">=42.0.5"
+jsonschema = "*"
+
+[tool.poetry.group.fmt]
+optional = true
+
+[tool.poetry.group.fmt.dependencies]
+black = "^22.3.0"
+ruff = ">=0.1"
+
+[tool.poetry.group.lint]
+optional = true
+
+[tool.poetry.group.lint.dependencies]
+black = "^22.3.0"
+ruff = ">=0.1"
+codespell = ">=2.2.2"
+pyright = "^1.1.318"
+
+[tool.poetry.group.unit]
+optional = true
+
+[tool.poetry.group.unit.dependencies]
+pytest = ">=7.2"
+coverage = { extras = ["toml"], version = ">7.0" }
+jsonschema = ">=4.10"
+pytest-mock = "^3.11.1"
+ops-scenario = "^7.0.0"
+
+[tool.poetry.group.integration]
+optional = true
+
+[tool.poetry.group.integration.dependencies]
+pytest = ">=7.2"
+# FIXME (libjuju): Unpin once GH#1093 is fixed
+# (impossible to parse storage constraints)
+juju = "^3.2.0,<3.5.2"
+coverage = { extras = ["toml"], version = ">7.0" }
+pytest-operator = ">0.20"
+requests = ">2.25"
+kazoo = ">=2.8"
+jsonschema = ">=4.10"
+pytest-operator-cache = { git = "https://github.com/canonical/data-platform-workflows", tag = "v22.0.0", subdirectory = "python/pytest_plugins/pytest_operator_cache" }
+# To be enabled if we are using groups on integration tests
+# pytest-operator-groups = {git = "https://github.com/canonical/data-platform-workflows", tag = "v6.1.1", subdirectory = "python/pytest_plugins/pytest_operator_groups"}
+pytest-microceph = { git = "https://github.com/canonical/data-platform-workflows", tag = "v22.0.0", subdirectory = "python/pytest_plugins/microceph" }
+
+[tool.poetry.group.format.dependencies]
+pyright = "^1.1.301"
+
+[tool.ruff]
+line-length = 99
+extend-exclude = ["__pycache__", "*.egg_info", "tests/integration/app-charm/lib"]
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "C", "N", "D", "I001"]
+ignore = ["E501", "D107"]
+per-file-ignores = { "tests/*" = ["D100", "D101", "D102", "D103", "D104", "E999"], "src/literals.py" = ["D101"] }
+extend-ignore = [
+  "D203",
+  "D204",
+  "D213",
+  "D215",
+  "D400",
+  "D401",
+  "D404",
+  "D406",
+  "D407",
+  "D408",
+  "D409",
+  "D413",
+]
+mccabe.max-complexity = 10
+
+[tool.pyright]
+include = ["src"]
+extraPaths = ["./lib"]
+pythonVersion = "3.10"
+pythonPlatform = "All"
+typeCheckingMode = "basic"
+reportIncompatibleMethodOverride = false
+reportImportCycles = false
+reportMissingModuleSource = true
+stubPath = ""

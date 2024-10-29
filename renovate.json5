@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "enabledManagers": ["pep621"],
+  "packageRules": [
+    {
+      "matchManagers": ["pep621"],
+      "rangeStrategy": "bump",
+      "groupName": "Python dependencies"
+    },
+    {
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["project.optional-dependencies"],
+      "matchJsonata": ["managerData.depGroup = 'charm-libs'"],
+      "enabled": false,
+      "rangeStrategy": "bump",
+      "groupName": "Python dependencies"
+    },
+    {
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["project.dependencies"],
+      "rangeStrategy": "bump",
+      "groupName": "Python dependencies"
+    },
+    {
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["tool.uv.dev-dependencies"],
+      "rangeStrategy": "bump",
+      "groupName": "Python dependencies"
+    },
+    ]
+}
