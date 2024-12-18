@@ -31,7 +31,7 @@ authProvider.sasl=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
 enforce.auth.enabled=true
 enforce.auth.schemes=sasl,digest
 audit.enable=true
-admin.serverAddress=localhost
+admin.serverAddress=127.0.0.1
 """
 
 TLS_PROPERTIES = """

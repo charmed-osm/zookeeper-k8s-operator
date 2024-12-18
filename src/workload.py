@@ -87,7 +87,7 @@ class ZKWorkload(WorkloadBase):
             return False
 
         try:
-            response = httpx.get(f"http://localhost:{ADMIN_SERVER_PORT}/commands/ruok", timeout=10)
+            response = httpx.get(f"http://127.0.0.1:{ADMIN_SERVER_PORT}/commands/ruok", timeout=10)
             response.raise_for_status()
 
         except httpx.HTTPError:
@@ -121,7 +121,7 @@ class ZKWorkload(WorkloadBase):
             return ""
 
         try:
-            response = httpx.get(f"http://localhost:{ADMIN_SERVER_PORT}/commands/srvr", timeout=10)
+            response = httpx.get(f"http://127.0.0.1:{ADMIN_SERVER_PORT}/commands/srvr", timeout=10)
             response.raise_for_status()
 
         except httpx.HTTPError:

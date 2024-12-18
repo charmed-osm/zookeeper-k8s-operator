@@ -116,7 +116,7 @@ class BackupManager:
         # the response. Or write to a temp file as a last resort.
         with httpx.stream(
             "GET",
-            f"http://localhost:{ADMIN_SERVER_PORT}/commands/snapshot?streaming=true",
+            f"http://127.0.0.1:{ADMIN_SERVER_PORT}/commands/snapshot?streaming=true",
             headers={"Authorization": f"digest {zk_user}:{zk_pwd}"},
         ) as response:
 
