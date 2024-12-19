@@ -13,6 +13,7 @@ from typing import cast
 from unittest.mock import DEFAULT, Mock, PropertyMock, patch
 
 import pytest
+import trustme
 import yaml
 from ops.testing import Container, Context, PeerRelation, Relation, Secret, State
 
@@ -27,6 +28,11 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 TLS_NAME = "self-signed-certificates"
 
 secret_suffix = "-k8s" if SUBSTRATE == "k8s" else ""
+
+
+@pytest.fixture()
+def ca() -> trustme.CA:
+    return trustme.CA()
 
 
 @pytest.fixture()
@@ -260,16 +266,18 @@ def test_certificates_available_fails_wrong_csr(ctx: Context, base_state: State)
         assert not charm.state.unit_server.ca_cert
 
 
-def test_certificates_available_succeeds(ctx: Context, base_state: State) -> None:
+def test_certificates_available_succeeds(ctx: Context, base_state: State, ca: trustme.CA) -> None:
     # Given
+    cert = ca.issue_cert("myunit")
+    cert_str = cert.cert_chain_pems[0].bytes().decode()
     provider_data = {
         "certificates": json.dumps(
             [
                 {
                     "certificate_signing_request": "not-missing",
                     "ca": "ca",
-                    "certificate": "cert",
-                    "chain": ["ca", "cert"],
+                    "certificate": cert_str,
+                    "chain": ["ca", cert_str],
                 }
             ]
         )
@@ -314,20 +322,24 @@ def test_certificates_available_succeeds(ctx: Context, base_state: State) -> Non
     # Then
     secret_out = state_out.get_secret(label=f"{PEER}.zookeeper{secret_suffix}.unit")
     assert secret_out.latest_content is not None
-    assert secret_out.latest_content.get("certificate", "") == "cert"
+    assert secret_out.latest_content.get("certificate", "") == cert_str
     assert secret_out.latest_content.get("ca-cert", "") == "ca"
 
 
-def test_renew_certificates_auto_reload(ctx: Context, base_state: State) -> None:
+def test_renew_certificates_auto_reload(ctx: Context, base_state: State, ca: trustme.CA) -> None:
     # Given
+    old_cert = ca.issue_cert("myunit")
+    old_cert_str = old_cert.cert_chain_pems[0].bytes().decode()
+    new_cert = ca.issue_cert("myunit")
+    new_cert_str = new_cert.cert_chain_pems[0].bytes().decode()
     provider_data = {
         "certificates": json.dumps(
             [
                 {
                     "certificate_signing_request": "not-missing",
                     "ca": "ca",
-                    "certificate": "new-cert",
-                    "chain": ["ca", "cert"],
+                    "certificate": new_cert_str,
+                    "chain": ["ca", new_cert_str],
                 }
             ]
         )
@@ -341,7 +353,7 @@ def test_renew_certificates_auto_reload(ctx: Context, base_state: State) -> None
         PEER,
         PEER,
         local_app_data={"tls": "enabled", "switching-encryption": "started"},
-        local_unit_data={"csr": "not-missing", "certificate": "old-cert", "ca-cert": "ca"},
+        local_unit_data={"csr": "not-missing", "certificate": old_cert_str, "ca-cert": "ca"},
         peers_data={},
     )
     tls_relation = Relation(
@@ -366,7 +378,7 @@ def test_renew_certificates_auto_reload(ctx: Context, base_state: State) -> None
 
     # Then
     unit_data = state_out.get_relation(cluster_peer.id).local_unit_data
-    assert unit_data.get("certificate", "") == "new-cert"
+    assert unit_data.get("certificate", "") == new_cert_str
     assert unit_data.get("ca-cert", "") == "ca"
 
 
@@ -515,7 +527,8 @@ def test_certificates_expiring(ctx: Context, base_state: State) -> None:
             "fqdn": "fangorn",
         },
     )
-    state_in = dataclasses.replace(base_state, relations=[cluster_peer])
+    tls_relation = Relation(CERTS_REL_NAME, TLS_NAME)
+    state_in = dataclasses.replace(base_state, relations=[cluster_peer, tls_relation])
     key = open("tests/keys/0.key").read()
 
     # Given
@@ -547,7 +560,8 @@ def test_set_tls_private_key(ctx: Context, base_state: State) -> None:
             "fqdn": "fangorn",
         },
     )
-    state_in = dataclasses.replace(base_state, relations=[cluster_peer])
+    tls_relation = Relation(CERTS_REL_NAME, TLS_NAME)
+    state_in = dataclasses.replace(base_state, relations=[cluster_peer, tls_relation])
     key = open("tests/keys/0.key").read()
 
     # When
