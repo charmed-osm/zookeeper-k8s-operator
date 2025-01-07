@@ -29,3 +29,6 @@ bases:
     run-on:
       - name: "ubuntu"
         channel: "22.04"
+
+links:
+  documentation: https://discourse.charmhub.io/t/15907
